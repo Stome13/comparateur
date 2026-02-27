@@ -33,8 +33,19 @@
     background: #0052a3;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+main {
+    flex: 1;
 }
 
 .navbar {
@@ -180,7 +191,8 @@ body {
 footer {
     border-top: 2px solid #e0e0e0;
     background: white;
-    margin-top: 40px;
+    /* push footer to bottom when container is flex */
+    margin-top: auto;
 }
 
 footer a {
