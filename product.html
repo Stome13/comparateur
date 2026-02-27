@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartCompare - Détail Produit</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/chart.js"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
@@ -39,86 +40,55 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/chart.js"></script>
     <script>
-        function initProductPage(){
-            console.log('initProductPage called');
-            const params = new URLSearchParams(window.location.search);
-            const id = params.get('id');
-            console.log('Product ID:', id);
-            const prod = getProductById(id);
-            console.log('Product found:', prod);
-            
-            if(!prod){ 
-                document.getElementById('product-detail').innerHTML = '<div class="alert alert-warning">Produit non trouvé</div>'; 
-                return; 
+        // product page now reads the selected product from sessionStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            const raw = sessionStorage.getItem('selectedProduct');
+            if (!raw) {
+                document.getElementById('product-detail').innerHTML = '<div class="alert alert-warning">Produit non trouvé</div>';
+                return;
             }
-            
+            const prod = JSON.parse(raw);
             const container = document.getElementById('product-detail');
-            const bestOffer = prod.offers.reduce((min,o)=>o.price<min.price?o:min,prod.offers[0]);
-            
+            const hist = getHistoryForProduct(prod);
             container.innerHTML = `
                 <div class="row mb-5">
                     <div class="col-lg-4 mb-4 mb-lg-0">
-                        <img src="${prod.image}" alt="${prod.name}" class="img-fluid rounded shadow">
-                        <button id="fav-btn" onclick="toggleFavorite(${prod.id}); updateFavButton(${prod.id});" class="btn btn-primary w-100 mt-3">${isFavorite(prod.id)?'★ Retirer des favoris':'☆ Ajouter aux favoris'}</button>
+                        <img src="${prod.image}" alt="${prod.title}" class="img-fluid rounded shadow">
+                        <button id="fav-btn" class="btn btn-primary w-100 mt-3">
+                            ${isFavorite(prod) ? '★ Retirer des favoris' : '☆ Ajouter aux favoris'}
+                        </button>
                     </div>
                     <div class="col-lg-8">
-                        <h1 class="mb-3">${prod.name}</h1>
-                        <p class="text-muted lead">${prod.description}</p>
+                        <h1 class="mb-3">${prod.title}</h1>
                         <div class="card border-0 bg-light p-4 mb-4">
-                            <h5 class="text-primary mb-3">Meilleur prix</h5>
-                            <div class="fs-3 fw-bold text-success mb-2">${bestOffer.price.toFixed(2)} €</div>
-                            <div class="text-muted">chez <strong>${bestOffer.site}</strong></div>
+                            <h5 class="text-primary mb-3">Prix</h5>
+                            <div class="fs-3 fw-bold text-success mb-2">${prod.price.toFixed(2)} ${prod.currency || '€'}</div>
+                            <div class="text-muted">chez <strong>${prod.site}</strong></div>
                         </div>
+                        <a href="${prod.link}" target="_blank" class="btn btn-warning">Voir l'offre</a>
                     </div>
                 </div>
-
-                <h2 class="mb-4">Offres disponibles</h2>
-                <div class="table-responsive mb-5">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Site</th>
-                                <th>Prix</th>
-                                <th>Disponibilité</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${prod.offers.map(o=>`<tr>
-                                <td><strong>${o.site}</strong></td>
-                                <td><span class="text-primary fw-bold">${o.price.toFixed(2)} €</span></td>
-                                <td><span class="badge ${o.availability.includes('En stock')?'bg-success':'bg-danger'}">${o.availability}</span></td>
-                                <td><a href="${o.link}" target="_blank" class="btn btn-sm btn-warning">Voir l'offre</a></td>
-                            </tr>`).join('')}
-                        </tbody>
-                    </table>
-                </div>
-
-                <h2 class="mb-4">Historique des prix</h2>
-                <div class="card border-0 shadow p-4">
-                    <canvas id="history-chart" style="position: relative; height: 300px;"></canvas>
-                </div>
+                ${hist.length ? `
+                    <div id="price-history" class="mt-5">
+                        <h3>Historique des prix</h3>
+                        <canvas id="product-history-chart"></canvas>
+                    </div>
+                ` : ''}
             `;
-            
-            setTimeout(() => {
-                drawPriceHistory('history-chart', prod.priceHistory);
-            }, 100);
-        }
-        
-        function updateFavButton(id) {
-            const btn = document.getElementById('fav-btn');
-            if(btn) btn.textContent = isFavorite(id) ? '★ Retirer des favoris' : '☆ Ajouter aux favoris';
-        }
-        
-        // Appeler avec un petit délai pour s'assurer que tout est chargé
-        setTimeout(() => {
-            initProductPage();
-        }, 100);
+            if (hist.length) {
+                drawPriceHistory('product-history-chart', hist);
+            }
+            const favBtn = document.getElementById('fav-btn');
+            if (favBtn) {
+                favBtn.addEventListener('click', () => {
+                    toggleFavorite(prod);
+                    favBtn.textContent = isFavorite(prod) ? '★ Retirer des favoris' : '☆ Ajouter aux favoris';
+                });
+            }
+        });
     </script>
 </body>
 </html>

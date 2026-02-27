@@ -1,4 +1,4 @@
-// chart.js wrappers for displaying price history
+// wrappers chart.js pour afficher l'historique des prix
 function drawPriceHistory(canvasId, history) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     new Chart(ctx, {
